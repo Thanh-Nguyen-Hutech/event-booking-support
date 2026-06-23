@@ -10,9 +10,6 @@ namespace EventBooking.API.Data
         {
         }
 
-        // ========================================================
-        // 1. KHAI BÁO CÁC DBSET (Tương đương với các bảng trong SQL)
-        // ========================================================
         public DbSet<Role> Roles { get; set; }
         public DbSet<PermissionDetail> PermissionDetails { get; set; }
         public DbSet<User> Users { get; set; }
@@ -28,13 +25,11 @@ namespace EventBooking.API.Data
         public DbSet<Portfolio> Portfolios { get; set; }
         public DbSet<PortfolioImage> PortfolioImages { get; set; }
 
-        // ========================================================
-        // 2. CẤU HÌNH FLUENT API (Ràng buộc, Khóa ngoại, Kiểu dữ liệu)
-        // ========================================================
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // --- PRIMARY KEYS ---
             modelBuilder.Entity<PermissionDetail>().HasKey(p => p.PermissionId);
             modelBuilder.Entity<VendorProfile>().HasKey(v => v.VendorId);
             modelBuilder.Entity<ServicePackage>().HasKey(sp => sp.PackageId);
@@ -47,80 +42,61 @@ namespace EventBooking.API.Data
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
-            // --- CẤU HÌNH QUAN HỆ 1-1 (One-to-One) ---
+            // --- CẤU HÌNH QUAN HỆ (RELATIONSHIPS) ---
 
-            // 1 User (Vendor) chỉ có 1 VendorProfile
+            //// 1. Portfolio -> VendorProfile (Fix lỗi khóa ngoại 'VendorProfileVendorId')
+            modelBuilder.Entity<Portfolio>()
+                .HasOne(p => p.VendorProfile)
+                .WithMany()
+                .HasForeignKey(p => p.VendorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 2. VendorProfile -> User (One-to-One)
             modelBuilder.Entity<VendorProfile>()
                 .HasOne(v => v.User)
                 .WithOne(u => u.VendorProfile)
                 .HasForeignKey<VendorProfile>(v => v.UserId)
-                .OnDelete(DeleteBehavior.Restrict); // Tránh lỗi Multiple Cascade Paths của SQL Server
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // 1 Booking chỉ có 1 Payment
+            // 3. Payment -> Booking (One-to-One)
             modelBuilder.Entity<Payment>()
                 .HasOne(p => p.Booking)
                 .WithOne(b => b.Payment)
                 .HasForeignKey<Payment>(p => p.BookingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // 1 Booking chỉ có 1 Review
+            // 4. Review -> Booking (One-to-One)
             modelBuilder.Entity<Review>()
                 .HasOne(r => r.Booking)
                 .WithOne(b => b.Review)
                 .HasForeignKey<Review>(r => r.BookingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // --- CẤU HÌNH QUAN HỆ 1-N (Đặc biệt cho Booking) ---
-
-            // User (Customer) đặt nhiều Bookings
+            // 5. Booking -> Customer (One-to-Many)
             modelBuilder.Entity<Booking>()
                 .HasOne(b => b.Customer)
                 .WithMany(u => u.Bookings)
                 .HasForeignKey(b => b.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ServicePackage nằm trong nhiều Bookings
+            // 6. Booking -> ServicePackage (One-to-Many)
             modelBuilder.Entity<Booking>()
                 .HasOne(b => b.ServicePackage)
                 .WithMany(sp => sp.Bookings)
                 .HasForeignKey(b => b.PackageId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // --- CẤU HÌNH KIỂU DỮ LIỆU SỐ THẬP PHÂN (Decimal Precision) ---
-            // Tránh warning "decimal column will be truncated" của EF Core
+            // --- KIỂU DỮ LIỆU SỐ THẬP PHÂN ---
+            modelBuilder.Entity<ServicePackage>().Property(sp => sp.Price).HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<Booking>().Property(b => b.TotalAmount).HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<Booking>().Property(b => b.DepositAmount).HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<Payment>().Property(p => p.Amount).HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<RevenueReport>().Property(r => r.TotalRevenue).HasColumnType("decimal(18,2)");
 
-            modelBuilder.Entity<ServicePackage>()
-                .Property(sp => sp.Price)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Booking>()
-                .Property(b => b.TotalAmount)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Booking>()
-                .Property(b => b.DepositAmount)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Payment>()
-                .Property(p => p.Amount)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<RevenueReport>()
-                .Property(r => r.TotalRevenue)
-                .HasColumnType("decimal(18,2)");
-
-            // --- CẤU HÌNH DEFAULT VALUES MẶC ĐỊNH ---
-            modelBuilder.Entity<User>()
-                .Property(u => u.IsActive)
-                .HasDefaultValue(true);
-
-            modelBuilder.Entity<ServicePackage>()
-                .Property(sp => sp.IsActive)
-                .HasDefaultValue(true);
-
-            modelBuilder.Entity<Booking>()
-                .Property(b => b.Status)
-                .HasDefaultValue(0);
+            // --- DEFAULT VALUES ---
+            modelBuilder.Entity<User>().Property(u => u.IsActive).HasDefaultValue(true);
+            modelBuilder.Entity<ServicePackage>().Property(sp => sp.IsActive).HasDefaultValue(true);
+            modelBuilder.Entity<Booking>().Property(b => b.Status).HasDefaultValue(0);
         }
     }
 }
