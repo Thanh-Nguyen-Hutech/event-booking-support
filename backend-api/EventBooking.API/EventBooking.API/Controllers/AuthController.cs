@@ -37,7 +37,6 @@ namespace EventBooking.API.Controllers
             var roleExists = await _context.Roles.AnyAsync(r => r.RoleId == request.RoleId);
             if (!roleExists)
             {
-                // Nếu DB chưa có Role nào, bạn có thể comment đoạn kiểm tra này lại lúc test ban đầu
                 return BadRequest(new { Message = "Vai trò (Role) không tồn tại hợp lệ." });
             }
 
