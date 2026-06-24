@@ -1,4 +1,6 @@
-﻿namespace EventBooking.API.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace EventBooking.API.Models
 {
     public class AvailableSlot
     {
@@ -8,6 +10,7 @@
         public string TimeSlot { get; set; } = string.Empty;
         public bool IsAvailable { get; set; } = true;
 
+        [ForeignKey("PackageId")]
         public ServicePackage? ServicePackage { get; set; }
     }
 }

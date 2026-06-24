@@ -86,6 +86,16 @@ namespace EventBooking.API.Data
                 .HasForeignKey(b => b.PackageId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<AvailableSlot>(entity =>
+            {
+                entity.ToTable("AvailableSlots"); 
+
+                entity.HasOne(a => a.ServicePackage)
+                      .WithMany(sp => sp.AvailableSlots)
+                      .HasForeignKey(a => a.PackageId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // --- KIỂU DỮ LIỆU SỐ THẬP PHÂN ---
             modelBuilder.Entity<ServicePackage>().Property(sp => sp.Price).HasColumnType("decimal(18,2)");
             modelBuilder.Entity<Booking>().Property(b => b.TotalAmount).HasColumnType("decimal(18,2)");

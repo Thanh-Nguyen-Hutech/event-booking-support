@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema; // Thêm thư viện này
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using EventBooking.API.Models;
 
 namespace EventBooking.API.Models
