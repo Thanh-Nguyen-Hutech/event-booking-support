@@ -1,0 +1,11 @@
+# Visual Studio (Các file rác của .NET)
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# Node.js (Thư viện frontend - KHÔNG ĐƯỢC COMMIT CÁI NÀY)
+node_modules/
+dist/
+.DS_Store
