@@ -90,5 +90,73 @@ namespace EventBooking.API.Controllers
 
             return NotFound(new { Message = "Không tìm thấy đơn hàng tương ứng với giao dịch này." });
         }
+
+        // Đường dẫn sẽ là: GET api/payment/ipn
+        [HttpGet("ipn")]
+        public async Task<IActionResult> IpnCallback()
+        {
+            var queryDictionary = Request.Query;
+
+            try
+            {
+                // 1. Kiểm tra chữ ký bảo mật (Chống request giả mạo)
+                if (!_vnPayService.ValidateSignature(queryDictionary))
+                {
+                    return Ok(new { RspCode = "97", Message = "Invalid signature" });
+                }
+
+                string vnp_ResponseCode = queryDictionary["vnp_ResponseCode"]!;
+                string bookingIdStr = queryDictionary["vnp_TxnRef"]!;
+
+                // VNPAY nhân số tiền lên 100 lần, nên ta phải chia lại để kiểm tra
+                long vnp_Amount = Convert.ToInt64(queryDictionary["vnp_Amount"]) / 100;
+
+                if (Guid.TryParse(bookingIdStr, out Guid bookingId))
+                {
+                    var booking = await _context.Bookings.FindAsync(bookingId);
+
+                    // 2. Kiểm tra đơn hàng có tồn tại không
+                    if (booking == null)
+                    {
+                        return Ok(new { RspCode = "01", Message = "Order not found" });
+                    }
+
+                    // 3. Kiểm tra số tiền thanh toán có khớp với tiền cọc không
+                    if (booking.DepositAmount != vnp_Amount)
+                    {
+                        return Ok(new { RspCode = "04", Message = "Invalid amount" });
+                    }
+
+                    // 4. Kiểm tra trạng thái đơn hàng (Chỉ xử lý đơn Pending = 0)
+                    if (booking.Status != 0)
+                    {
+                        return Ok(new { RspCode = "02", Message = "Order already confirmed" });
+                    }
+
+                    // 5. CẬP NHẬT DATABASE
+                    if (vnp_ResponseCode == "00")
+                    {
+                        booking.Status = 1; // Giao dịch thành công -> Đã cọc
+                    }
+                    else
+                    {
+                        // Có thể tạo thêm trạng thái -1 cho giao dịch thất bại/hủy
+                        // Tuy nhiên với cơ chế giữ chỗ 15 phút, bạn có thể cứ giữ nguyên Status 0 để hệ thống tự đào thải
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    // Bắt buộc trả về RspCode = "00" để VNPAY biết bạn đã nhận và xử lý xong
+                    return Ok(new { RspCode = "00", Message = "Confirm Success" });
+                }
+
+                return Ok(new { RspCode = "99", Message = "Input data required" });
+            }
+            catch (Exception ex)
+            {
+                // Ghi log lỗi tại đây nếu cần
+                return Ok(new { RspCode = "99", Message = "Unknown error" });
+            }
+        }
     }
 }
