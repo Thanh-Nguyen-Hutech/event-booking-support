@@ -43,6 +43,7 @@ builder.Services.AddAuthentication(options =>
 
 // ĐĂNG KÝ SERVICES
 builder.Services.AddScoped<IFileService, LocalFileService>();
+builder.Services.AddScoped<VnPayService>();
 
 var app = builder.Build();
 
